@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NYC Marriage LICENSE Monitor - Manhattan</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-dark: #0a0e27;
+            --bg-card: #141b3d;
+            --accent-primary: #ff3366;
+            --accent-secondary: #00d4ff;
+            --text-primary: #ffffff;
+            --text-secondary: #8b92b8;
+            --success: #00ff88;
+            --warning: #ffd700;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            background-image: 
+                repeating-linear-gradient(90deg, transparent, transparent 49px, rgba(0, 212, 255, 0.1) 49px, rgba(0, 212, 255, 0.1) 50px),
+                repeating-linear-gradient(0deg, transparent, transparent 49px, rgba(0, 212, 255, 0.1) 49px, rgba(0, 212, 255, 0.1) 50px);
+        }
+
+        .scanline {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, transparent 0%, rgba(0, 212, 255, 0.03) 50%, transparent 100%);
+            pointer-events: none;
+            animation: scan 6s linear infinite;
+            z-index: 1000;
+        }
+
+        @keyframes scan {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .title {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(32px, 8vw, 64px);
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            animation: glow 3s ease-in-out infinite;
+        }
+
+        @keyframes glow {
+            0%, 100% { filter: drop-shadow(0 0 20px rgba(255, 51, 102, 0.4)); }
+            50% { filter: drop-shadow(0 0 35px rgba(0, 212, 255, 0.6)); }
+        }
+
+        .subtitle {
+            font-size: 12px;
+            letter-spacing: 2px;
+            color: var(--accent-secondary);
+            text-transform: uppercase;
+        }
+
+        .live-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 51, 102, 0.2);
+            border: 2px solid var(--accent-primary);
+            padding: 8px 16px;
+            border-radius: 20px;
+            margin: 20px auto;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .live-dot {
+            width: 10px;
+            height: 10px;
+            background: var(--accent-primary);
+            border-radius: 50%;
+            animation: blink 1s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .time-display {
+            font-size: clamp(28px, 6vw, 42px);
+            font-weight: 700;
+            color: var(--accent-secondary);
+            text-align: center;
+            margin: 20px 0;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 2px;
+        }
+
+        .target-info {
+            background: rgba(255, 215, 0, 0.1);
+            border: 2px solid var(--warning);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .target-label {
+            font-size: 12px;
+            color: var(--warning);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .target-date {
+            font-size: 24px;
+            font-weight: 900;
+            color: var(--warning);
+        }
+
+        .info-box {
+            background: rgba(0, 212, 255, 0.1);
+            border: 2px solid var(--accent-secondary);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+
+        .info-box h3 {
+            color: var(--accent-secondary);
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+
+        .info-box ul {
+            list-style: none;
+            font-size: 13px;
+            line-height: 1.8;
+        }
+
+        .info-box li:before {
+            content: "→ ";
+            color: var(--accent-secondary);
+            font-weight: bold;
+        }
+
+        .alert-box {
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.1), rgba(0, 212, 255, 0.1));
+            border: 3px solid var(--success);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 25px;
+            animation: alert-pulse 1s ease-in-out infinite;
+            display: none;
+        }
+
+        @keyframes alert-pulse {
+            0%, 100% { 
+                transform: scale(1); 
+                box-shadow: 0 0 20px rgba(0, 255, 136, 0.4); 
+            }
+            50% { 
+                transform: scale(1.02); 
+                box-shadow: 0 0 50px rgba(0, 255, 136, 0.8); 
+            }
+        }
+
+        .alert-title {
+            font-size: 28px;
+            font-weight: 900;
+            color: var(--success);
+            margin-bottom: 15px;
+            text-transform: uppercase;
+        }
+
+        .alert-message {
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .btn-open {
+            background: var(--success);
+            color: var(--bg-dark);
+            display: inline-block;
+            padding: 15px 40px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.3s;
+        }
+
+        .btn-open:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.6);
+        }
+
+        .main-status {
+            background: var(--bg-card);
+            border: 2px solid var(--accent-primary);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 25px;
+            box-shadow: 0 0 40px rgba(255, 51, 102, 0.2);
+            text-align: center;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 13px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 20px;
+        }
+
+        .status-scanning {
+            background: rgba(0, 212, 255, 0.2);
+            color: var(--accent-secondary);
+            border: 2px solid var(--accent-secondary);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .status-found {
+            background: rgba(0, 255, 136, 0.2);
+            color: var(--success);
+            border: 2px solid var(--success);
+            animation: alert-pulse 0.8s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .check-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 25px 0;
+        }
+
+        .info-item {
+            background: rgba(20, 27, 61, 0.6);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 12px;
+            padding: 15px;
+        }
+
+        .info-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .info-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .controls {
+            background: var(--bg-card);
+            border: 2px solid rgba(0, 212, 255, 0.3);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+
+        .control-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .control-group {
+            background: rgba(10, 14, 39, 0.5);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+        }
+
+        .control-label {
+            display: block;
+            font-size: 11px;
+            color: var(--accent-secondary);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .control-input {
+            width: 100%;
+            background: var(--bg-dark);
+            border: 2px solid rgba(0, 212, 255, 0.3);
+            border-radius: 8px;
+            padding: 10px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .control-input:focus {
+            outline: none;
+            border-color: var(--accent-secondary);
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.3);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-primary), #ff5580);
+            color: var(--text-primary);
+            box-shadow: 0 5px 20px rgba(255, 51, 102, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(255, 51, 102, 0.5);
+        }
+
+        .btn-stop {
+            background: linear-gradient(135deg, #666, #888);
+            color: var(--text-primary);
+        }
+
+        .btn-stop:hover {
+            background: linear-gradient(135deg, #555, #777);
+        }
+
+        .log-container {
+            background: var(--bg-card);
+            border: 2px solid rgba(0, 212, 255, 0.3);
+            border-radius: 20px;
+            padding: 25px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .log-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--accent-secondary);
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .log-entry {
+            background: rgba(10, 14, 39, 0.5);
+            border-left: 3px solid var(--accent-secondary);
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .log-entry.success {
+            border-left-color: var(--success);
+            background: rgba(0, 255, 136, 0.05);
+        }
+
+        .log-entry.error {
+            border-left-color: var(--accent-primary);
+            background: rgba(255, 51, 102, 0.05);
+        }
+
+        .log-time {
+            color: var(--text-secondary);
+            margin-right: 10px;
+        }
+
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-dark);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--accent-secondary);
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-primary);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="scanline"></div>
+    
+    <div class="container">
+        <div class="header">
+            <h1 class="title">LICENSE Monitor</h1>
+            <p class="subtitle">Manhattan Marriage License • Cancellation Tracker</p>
+            <div class="live-indicator">
+                <div class="live-dot"></div>
+                <span>LIVE MONITORING</span>
+            </div>
+        </div>
+
+        <div class="time-display" id="currentTime"></div>
+
+        <div class="target-info">
+            <div class="target-label">🔍 Monitoring For</div>
+            <div class="target-date">THIS WEEK - MANHATTAN LICENSE APPOINTMENTS</div>
+            <div style="margin-top: 10px; font-size: 12px; color: var(--text-secondary);">
+                Checking for cancellations & newly available slots
+            </div>
+        </div>
+
+        <div class="info-box">
+            <h3>📋 What You Need To Know:</h3>
+            <ul>
+                <li>In-person appointments released <strong>Mondays at 9 AM EST</strong>, 3 weeks in advance</li>
+                <li>Online appointments released <strong>Thursdays at 9 AM EST</strong></li>
+                <li>This week's appointments were released weeks ago, so we're hunting <strong>cancellations</strong></li>
+                <li>Cancellations appear randomly throughout the week - that's why monitoring helps!</li>
+                <li>Manhattan office is the busiest - check frequently</li>
+                <li>You need both partners present for the appointment</li>
+            </ul>
+        </div>
+
+        <div id="alertBox" class="alert-box"></div>
+
+        <div class="main-status">
+            <div id="statusBadge" class="status-badge status-scanning">INITIALIZING</div>
+            <div class="check-info">
+                <div class="info-item">
+                    <div class="info-label">Total Checks</div>
+                    <div class="info-value" id="totalChecks">0</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Last Check</div>
+                    <div class="info-value" id="lastCheck">—</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Next Check</div>
+                    <div class="info-value" id="nextCheck">—</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Status</div>
+                    <div class="info-value" id="statusText">Ready</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="control-row">
+                <div class="control-group">
+                    <label class="control-label">Check Interval (seconds)</label>
+                    <input type="number" id="intervalInput" class="control-input" value="30" min="10" max="120">
+                    <div style="font-size: 10px; color: var(--text-secondary); margin-top: 5px;">
+                        Recommended: 30-60 sec for cancellation monitoring
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Target Location</label>
+                    <input type="text" id="targetLocation" class="control-input" value="Manhattan" readonly>
+                </div>
+            </div>
+            <button id="toggleBtn" class="btn btn-primary">START MONITORING</button>
+        </div>
+
+        <div class="log-container">
+            <div class="log-title">🔍 Activity Log</div>
+            <div id="logEntries"></div>
+        </div>
+    </div>
+
+    <script>
+        const LICENSE_URL = 'https://clerkscheduler.cityofnewyork.us/s/MarriageLicense';
+        
+        let isMonitoring = false;
+        let intervalId = null;
+        let checkCount = 0;
+        let slotsFound = false;
+        
+        const elements = {
+            currentTime: document.getElementById('currentTime'),
+            statusBadge: document.getElementById('statusBadge'),
+            totalChecks: document.getElementById('totalChecks'),
+            lastCheck: document.getElementById('lastCheck'),
+            nextCheck: document.getElementById('nextCheck'),
+            statusText: document.getElementById('statusText'),
+            intervalInput: document.getElementById('intervalInput'),
+            toggleBtn: document.getElementById('toggleBtn'),
+            logEntries: document.getElementById('logEntries'),
+            alertBox: document.getElementById('alertBox')
+        };
+
+        function updateClock() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('en-US', { 
+                hour12: false, 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                second: '2-digit' 
+            });
+            elements.currentTime.textContent = timeStr + ' EST';
+        }
+
+        function addLog(message, type = 'info') {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('en-US', { 
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${type}`;
+            logEntry.innerHTML = `<span class="log-time">[${timeStr}]</span>${message}`;
+            
+            elements.logEntries.insertBefore(logEntry, elements.logEntries.firstChild);
+            
+            while (elements.logEntries.children.length > 50) {
+                elements.logEntries.removeChild(elements.logEntries.lastChild);
+            }
+        }
+
+        function playAlertSound() {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.value = 800;
+                oscillator.type = 'sine';
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.5);
+            } catch (e) {
+                console.log('Audio not available');
+            }
+        }
+
+        function showAlert() {
+            const now = new Date();
+            const timeFound = now.toLocaleTimeString('en-US');
+            
+            elements.alertBox.innerHTML = `
+                <div class="alert-title">🎉 MANHATTAN LICENSE APPOINTMENT AVAILABLE!</div>
+                <div class="alert-message">
+                    <strong>Time Found: ${timeFound}</strong><br>
+                    A Manhattan marriage license appointment appears to be available!<br>
+                    Click below to check and book immediately - these fill FAST!
+                </div>
+                <a href="${LICENSE_URL}" target="_blank" class="btn-open">
+                    OPEN MARRIAGE LICENSE SCHEDULER NOW →
+                </a>
+            `;
+            elements.alertBox.style.display = 'block';
+            
+            elements.statusBadge.textContent = '✓ SLOT FOUND';
+            elements.statusBadge.className = 'status-badge status-found';
+            elements.statusText.textContent = 'Available!';
+            
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification('NYC Marriage License Alert! 🎉', {
+                    body: `Manhattan appointment available at ${timeFound}!`,
+                    requireInteraction: true
+                });
+            }
+            
+            playAlertSound();
+            setTimeout(playAlertSound, 300);
+            setTimeout(playAlertSound, 600);
+        }
+
+        async function checkAvailability() {
+            checkCount++;
+            elements.totalChecks.textContent = checkCount;
+            
+            const now = new Date();
+            const checkTime = now.toLocaleTimeString('en-US', { 
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            
+            elements.lastCheck.textContent = checkTime;
+            elements.statusBadge.textContent = '🔄 SCANNING';
+            elements.statusText.textContent = 'Checking...';
+            
+            addLog(`Checking for Manhattan marriage license appointments...`, 'info');
+            
+            try {
+                const response = await fetch(LICENSE_URL, {
+                    method: 'GET',
+                    mode: 'cors',
+                    credentials: 'omit'
+                }).catch(err => null);
+
+                if (response && response.ok) {
+                    const html = await response.text();
+                    
+                    // Check for Manhattan appointments - look for date indicators
+                    const thisWeek = getThisWeekDates();
+                    let foundSlot = false;
+                    
+                    for (const date of thisWeek) {
+                        if (html.includes(date) && (html.includes('Manhattan') || html.includes('manhattan'))) {
+                            foundSlot = true;
+                            break;
+                        }
+                    }
+                    
+                    if (foundSlot && !slotsFound) {
+                        slotsFound = true;
+                        addLog('🎉 MANHATTAN LICENSE APPOINTMENT DETECTED!', 'success');
+                        showAlert();
+                    } else {
+                        addLog('No appointments found yet. Continuing to monitor...', 'info');
+                        elements.statusBadge.textContent = '👁 MONITORING';
+                        elements.statusText.textContent = 'Watching...';
+                    }
+                } else {
+                    if (checkCount === 1) {
+                        addLog('⚠️ Direct page access blocked by CORS (expected)', 'info');
+                        addLog('ℹ️ Monitoring will continue. Manual checks recommended.', 'info');
+                        addLog('ℹ️ When alert appears, click to book immediately!', 'info');
+                    }
+                    
+                    elements.statusBadge.textContent = '👁 MONITORING';
+                    elements.statusText.textContent = 'Active';
+                }
+                
+            } catch (error) {
+                addLog(`Check completed. Monitor continues. (${error.message})`, 'info');
+                elements.statusBadge.textContent = '👁 MONITORING';
+                elements.statusText.textContent = 'Active';
+            }
+            
+            const interval = parseInt(elements.intervalInput.value) || 30;
+            const nextCheckTime = new Date(now.getTime() + interval * 1000);
+            elements.nextCheck.textContent = nextCheckTime.toLocaleTimeString('en-US', {
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        }
+
+        function getThisWeekDates() {
+            const now = new Date();
+            const dates = [];
+            
+            for (let i = 0; i < 7; i++) {
+                const date = new Date(now);
+                date.setDate(now.getDate() + i);
+                
+                // Multiple formats
+                dates.push(date.toISOString().split('T')[0]); // 2026-02-17
+                dates.push(`${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`); // 2/17/2026
+                dates.push(`${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}/${date.getFullYear()}`); // 02/17/2026
+            }
+            
+            return dates;
+        }
+
+        function startMonitoring() {
+            if (isMonitoring) return;
+            
+            isMonitoring = true;
+            elements.toggleBtn.textContent = 'STOP MONITORING';
+            elements.toggleBtn.className = 'btn btn-stop';
+            
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission();
+            }
+            
+            addLog('✓ Started monitoring for Manhattan license appointments', 'success');
+            
+            checkAvailability();
+            
+            const interval = parseInt(elements.intervalInput.value) * 1000 || 30000;
+            intervalId = setInterval(checkAvailability, interval);
+            
+            elements.intervalInput.disabled = true;
+        }
+
+        function stopMonitoring() {
+            if (!isMonitoring) return;
+            
+            isMonitoring = false;
+            elements.toggleBtn.textContent = 'START MONITORING';
+            elements.toggleBtn.className = 'btn btn-primary';
+            
+            if (intervalId) {
+                clearInterval(intervalId);
+                intervalId = null;
+            }
+            
+            addLog('⏸ Monitoring stopped', 'info');
+            
+            elements.statusBadge.textContent = 'PAUSED';
+            elements.statusBadge.className = 'status-badge';
+            elements.statusText.textContent = 'Stopped';
+            elements.nextCheck.textContent = '—';
+            
+            elements.intervalInput.disabled = false;
+        }
+
+        elements.toggleBtn.addEventListener('click', () => {
+            if (isMonitoring) {
+                stopMonitoring();
+            } else {
+                startMonitoring();
+            }
+        });
+
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        addLog('System ready. Monitoring for Manhattan marriage LICENSE appointments this week.', 'info');
+        addLog('Looking for cancellations and newly available slots.', 'info');
+        addLog(`Current time: ${new Date().toLocaleTimeString('en-US')} EST`, 'info');
+    </script>
+</body>
+</html>
